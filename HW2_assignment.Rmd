@@ -1,6 +1,7 @@
 ---
 title: "HW 2: From correlation to linear mixed-effect models. Assignment sheet"
----
+--- 
+--- date 17.05.2018
 
 ```{r setup, include=FALSE}
 library(tidyverse)
@@ -20,40 +21,88 @@ The dataset is available [https://raw.githubusercontent.com/agricolamz/2018-MAG_
 
 ### 1.0 Read the data from file to the variable `shva`.
 ```{r 1.0}
+shva <- read.csv('C:/Documents/Onik/R/duryagin_ReductionRussian.txt', sep = '\t')
 
 ```
 
 ### 1.1 Scatterplot `f1` and `f2` using `ggplot()`. 
 Design it to look like the [following](https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/img/duryagin1.png).
 ```{r 1.1}
-
+ggplot(shva, aes(f2, f1))+
+  geom_point(aes(col = vowel))+
+  scale_y_reverse()+
+  scale_x_reverse()
 ```
 
 ### 1.2 Plot the boxplots of `f1` and `f2` for each vowel using `ggplot()`.
 Design it to look like [this](https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/img/duryagin2.png) and [this](https://raw.githubusercontent.com/agricolamz/2018-MAG_R_course/master/img/duryagin3.png).
 ```{r 1.2}
 # f1 boxplot
-
+ggplot(shva, aes(vowel, f1))+
+  geom_boxplot(aes(fill = vowel))+
+  coord_flip()
 # f2 boxplot
+ggplot(shva, aes(vowel, f2))+
+  geom_boxplot(aes(fill = vowel))+
+  coord_flip()
 ```
 
 ### 1.3 Which `f1` can be considered outliers in _a_ vowel?
 We assume outliers to be those observations that lie outside 1.5 * IQR, where IQR, the 'Inter Quartile Range', is the difference between the 1st and the 3rd quartile (= 25% and 75% percentile).
 ```{r 1.3}
-
-
+boxplot(shva$f1[shva$vowel == 'a'])$out
 ```
 
 ### 1.4 Calculate Pearson's correlation of `f1` and `f2` (all data)
 ```{r 1.4}
-
+cor.test(shva$f1, shva$f2)
 ```
 
 ### 1.5 Calculate Pearson's correlation of `f1` and `f2` for each vowel
 ```{r 1.5}
-
+cor.test(shva$f1[shva$vowel == 'a'], shva$f2[shva$vowel == 'a'])
+cor.test(shva$f1[shva$vowel == 'A'], shva$f2[shva$vowel == 'A'])
+cor.test(shva$f1[shva$vowel == 'y'], shva$f2[shva$vowel == 'y'])
 ```
-
+#1.6
+```{r
+model <- lm(f2 ~ f1, shva)
+```
+#1.6.1
+```{r
+summary(model)$call
+```
+#1.6.2
+```{r
+summary(model)$adj.r.squared
+```
+#1.6.3
+```{r
+ggplot(shva, aes(f2, f1))+
+  geom_point(aes(col = vowel))+
+  scale_y_reverse()+
+  scale_x_reverse()+
+  geom_smooth(method='lm', se = F, col = 'gray')
+```
+# 1.7 
+```{r
+mix_model <- lmer(f1 ~ f2 + (1|vowel), shva)
+#1.7.1
+```
+summary(mix_model)$call
+```{r
+#1.7.2
+summary(mix_model)$varcor$vowel[1]
+```
+#1.7.4
+```{r
+shva$mix_pred <- predict(mix_model)
+ggplot(shva, aes(x = f2, y = f1))+
+  geom_point(aes(col = vowel))+
+  scale_y_reverse()+
+  scale_x_reverse()+
+  geom_line(data = shva, aes(x = f2, y = mix_pred, col = vowel), size = 0.7)
+```
 
 ## 2. English Lexicon Project data
 880 nouns, adjectives and verbs from the English Lexicon Project data (Balota et al. 2007).
@@ -70,51 +119,71 @@ Data from Natalya Levshina's `RLing` package available (here)[https://raw.github
 
 ### 2.0 Read the data from file to the variable `elp`.
 ```{r 2.0}
-
+elp <- read.csv('C:/Documents/Onik/R/ELP.csv', sep = ',')
 ```
 
 ### 2.1 Which two variables have the highest Pearson's correlaton value?
 ```{r 2.1}
-
+cor_matrix <- elp %>% select_if(is.numeric) %>% cor
+max_cor <- max(cor_matrix[lower.tri(cor_matrix)])
+rownames(which(cor_matrix == max_cor, arr.ind=TRUE))
 ```
 
 ### 2.2 Group your data by parts of speech and make a scatterplot of SUBTLWF and Mean_RT.
 ```{r 2.2}
-
+ggplot(elp, aes(SUBTLWF, Mean_RT))+
+  geom_point(aes(col = Length))+
+  scale_color_continuous(low = "lightblue", high = "red")+
+  facet_wrap(~ POS)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  coord_trans(x = "log10")
 ```
 
 We've used `scale_color_continuous(low = "lightblue", high = "red")` as a parameter of `ggplot()`.
 
 ### 2.3 Use the linear regression model to predict `Mean_RT` by `log(SUBTLWF)` and `POS`.
+```{r 
+model2 <- lm(Mean_RT ~ log(SUBTLWF) + POS, elp)
+```
 #### 2.3.1 Provide the result regression formula
 ```{r 2.3.1}
-
+summary(model2)$call
 ```
 
 #### 2.3.2 Provide the adjusted R$^2$
 ```{r 2.3.2}
-
+summary(model2)$adj.r.squared
 ```
 
 #### 2.3.3 Add the regression line in the scatterplot.
 ```{r 2.3.3}
-
+ggplot(elp, aes(log(SUBTLWF), Mean_RT))+
+  geom_point(aes(col = Length))+
+  scale_color_continuous(low = "lightblue", high = "red")+
+  geom_smooth(method='lm', se = F, col = 'gray')
 ```
 
 ### 2.4 Use the mixed-efects model to predict `Mean_RT` by `log(SUBTLWF)` using POS intercept as a random effect
-
+```{r
+mix_model2 <- lmer(Mean_RT ~ log(SUBTLWF) + (1|POS), elp)
+```
 #### 2.4.1 Provide the fixed effects formula
 ```{r 2.4.1}
-
+summary(mix_model2)$call
 ```
 
 #### 2.4.2 Provide the variance for intercept argument for `POS` random effects
 ```{r 2.4.2}
-
+summary(mix_model2)$varcor$POS[1]
 ```
 
 #### 2.4.3 Add the regression line to the scatterplot
 ```{r 2.4.3}
+elp$mix_pred <- predict(mix_model2)
+ggplot(elp, aes(log(SUBTLWF), Mean_RT))+
+  geom_point(aes(col = POS))+
+  facet_wrap(~ POS)+
+  geom_line(data = elp, aes(x = log(SUBTLWF), y = mix_pred), col = 'black', size = 0.7)
 
 ```
 
@@ -136,28 +205,34 @@ Data from Natalya Levshina's `RLing` package available (here)[https://raw.github
 
 ### 3.0 Read the data from file to the variable `d_caus`.
 ```{r 3.0}
-
+d_caus <-  read.csv('C:/Documents/Onik/R/dutch_causatives.txt')
 ```
 
 ### 3.1 We are going to test whether the association between `Aux` and other categorical variables (`Aux` ~ `CrSem`, `Aux` ~ `CeSem`, etc) is statistically significant. The assiciation with which variable should be analysed using Fisher's Exact Test and not using Pearson's Chi-squared Test? Is this association statistically significant?
+# levels of this variable (i.e. Clause) the number of observations is less then 25 .
 ```{r 3.1}
-
+table(d_caus$CeSynt)
+fisher.test(d_caus$Aux, d_caus$CeSynt)$p.value # significant
 ```
 
 ### 3.2. Test the hypothesis that `Aux` and `EPTrans` are not independent with the help of Pearson's Chi-squared Test. 
 ```{r 3.2}
-
+chisq.test(d_caus$Aux, d_caus$CrSem)$p.value # significant
+chisq.test(d_caus$Aux, d_caus$CeSem)$p.value # non-significant
+chisq.test(d_caus$Aux, d_caus$CdEvSem)$p.value # significant
+chisq.test(d_caus$Aux, d_caus$EPTrans)$p.value # significant
+chisq.test(d_caus$Aux, d_caus$Country)$p.value # significant
+chisq.test(d_caus$Aux, d_caus$Domain)$p.value # significant
 ```
 
 ### 3.3 Provide expected values for Pearson's Chi-squared Test of `Aux` and `EPTrans` variables.
 ```{r 3.3}
-
+(chi_exp <- chisq.test(d_caus$Aux, d_caus$EPTrans)$expected)
 ```
 
 ### 3.4. Calculate the odds ratio.
 ```{r 3.4}
-
-
+(chi_exp[1][1]/chi_exp[3][1])/(chi_exp[3][1]/chi_exp[4][1])
 ```
 
 ### 3.5 Calculate effect size for this test using Cramer's V (phi).
@@ -173,7 +248,8 @@ We have / have not found a significant association between variables ... and ...
 ### 3.7 Visualize the distribution using mosaic plot.
 Use `mosaic()` function from `vcd` library.
 ```{r 3.7}
-
+library(vcd)
+vcd::mosaic(~ Aux + CrSem + Country, data=d_caus, shade=TRUE, legend=TRUE)
 ```
 
 Below is an example of how to use mosaic() with three variables.
@@ -181,9 +257,10 @@ Below is an example of how to use mosaic() with three variables.
 # mosaic(~ Aux + CrSem + Country, data=d_caus, shade=TRUE, legend=TRUE)
 ```
 
+
 ### 3.8 Why is it not recommended to run multiple Chisq tests of independence on different variables within your dataset whithout adjusting for the multiplicity? (i.e. just testing all the pairs of variables one by one)  
 ```
-
+# Perfoming a multiple chi-squared test does not make it nesserary to take into account the dependence between independent variables (in the formula).
 ```
 
 ### 3.9 Provide a short text (300 words) describing the hypothesis on this study and the results of your analysis.
